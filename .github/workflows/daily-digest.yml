@@ -12,6 +12,15 @@ jobs:
     permissions:
       contents: write
 
+    services:
+      rsshub:
+        image: diygod/rsshub:latest
+        ports:
+          - 1200:1200
+        env:
+          TWITTER_AUTH_TOKEN: ${{ secrets.X_AUTH_TOKEN }}
+          TWITTER_CT0: ${{ secrets.X_CT0 }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -21,9 +30,25 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Wait for RSSHub to be ready
+        run: |
+          echo "Waiting for RSSHub..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:1200/ > /dev/null 2>&1; then
+              echo "RSSHub is ready!"
+              break
+            fi
+            sleep 2
+          done
+
       - name: Generate daily digest
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          OPENAI_API_BASE: https://api.deepseek.com/v1
+          OPENAI_MODEL: deepseek-chat
+          RSSHUB_BASE_URL: http://localhost:1200
+          X_ACCOUNTS: ${{ vars.X_ACCOUNTS || 'grok,xingpt,FinanceYF5,sodawhite_dev,yetone,runes_leo,abskoop,egeberkina,vasuman,eptwts,EXM7777,steipete,rileybrown,yangyi,manateelazycat,lifesinger,yuxiyou,gregisenberg,oran_ge,LangChain,OpenAI,AnthropicAI,Khazix0918,dotey,deepseek_ai' }}
         run: |
           mkdir -p digests
           bun scripts/digest.ts \

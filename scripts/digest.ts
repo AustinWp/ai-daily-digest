@@ -110,6 +110,22 @@ const RSS_FEEDS: Array<{ name: string; xmlUrl: string; htmlUrl: string }> = [
   { name: "tedunangst.com", xmlUrl: "https://www.tedunangst.com/flak/rss", htmlUrl: "https://tedunangst.com" },
 ];
 
+// X/Twitter feeds via RSSHub proxy
+const RSSHUB_BASE_URL = (process.env.RSSHUB_BASE_URL || 'https://rsshub.app').replace(/\/+$/, '');
+const X_ACCOUNTS = process.env.X_ACCOUNTS || '';
+
+function buildXFeeds(): Array<{ name: string; xmlUrl: string; htmlUrl: string }> {
+  if (!X_ACCOUNTS.trim()) return [];
+  return X_ACCOUNTS.split(',')
+    .map(s => s.trim())
+    .filter(Boolean)
+    .map(account => ({
+      name: `𝕏 @${account}`,
+      xmlUrl: `${RSSHUB_BASE_URL}/twitter/user/${account}`,
+      htmlUrl: `https://x.com/${account}`,
+    }));
+}
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -367,31 +383,51 @@ async function fetchAllFeeds(feeds: typeof RSS_FEEDS): Promise<Article[]> {
 // ============================================================================
 
 async function callGemini(prompt: string, apiKey: string): Promise<string> {
-  const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.3,
-        topP: 0.8,
-        topK: 40,
-      },
-    }),
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => 'Unknown error');
-    throw new Error(`Gemini API error (${response.status}): ${errorText}`);
+  const MAX_RETRIES = 3;
+  const RETRY_DELAYS = [30_000, 60_000, 90_000]; // 30s, 60s, 90s
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.3,
+          topP: 0.8,
+          topK: 40,
+        },
+      }),
+    });
+
+    if (response.status === 429 && attempt < MAX_RETRIES) {
+      const errorText = await response.text().catch(() => '');
+      // Try to parse "retry after Xs" from the error message
+      const retryMatch = errorText.match(/retry\s+(?:after\s+|in\s+)([\d.]+)s/i);
+      const waitMs = retryMatch
+        ? Math.ceil(parseFloat(retryMatch[1]) * 1000)
+        : RETRY_DELAYS[attempt];
+      const waitSec = Math.round(waitMs / 1000);
+      console.warn(`[digest] Gemini 429 rate limited (attempt ${attempt + 1}/${MAX_RETRIES}), retrying in ${waitSec}s...`);
+      await new Promise(resolve => setTimeout(resolve, waitMs));
+      continue;
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`Gemini API error (${response.status}): ${errorText}`);
+    }
+
+    const data = await response.json() as {
+      candidates?: Array<{
+        content?: { parts?: Array<{ text?: string }> };
+      }>;
+    };
+
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
   }
-  
-  const data = await response.json() as {
-    candidates?: Array<{
-      content?: { parts?: Array<{ text?: string }> };
-    }>;
-  };
-  
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+  throw new Error('Gemini API: max retries exceeded (429 rate limit)');
 }
 
 async function callOpenAICompatible(
@@ -897,7 +933,7 @@ function generateDigestReport(articles: ScoredArticle[], highlights: string, sta
   const dateStr = now.toISOString().split('T')[0];
   
   let report = `# 📰 AI 博客每日精选 — ${dateStr}\n\n`;
-  report += `> 来自 Karpathy 推荐的 ${stats.totalFeeds} 个顶级技术博客，AI 精选 Top ${articles.length}\n\n`;
+  report += `> 来自 ${stats.totalFeeds} 个技术博客和社交媒体源，AI 精选 Top ${articles.length}\n\n`;
 
   // ── Today's Highlights ──
   if (highlights) {
@@ -909,9 +945,9 @@ function generateDigestReport(articles: ScoredArticle[], highlights: string, sta
   // ── Top 3 Deep Showcase ──
   if (articles.length >= 3) {
     report += `## 🏆 今日必读\n\n`;
-    for (let i = 0; i < Math.min(3, articles.length); i++) {
+    for (let i = 0; i < Math.min(5, articles.length); i++) {
       const a = articles[i];
-      const medal = ['🥇', '🥈', '🥉'][i];
+      const medal = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'][i];
       const catMeta = CATEGORY_META[a.category];
       
       report += `${medal} **${a.titleZh || a.title}**\n\n`;
@@ -1016,6 +1052,8 @@ Environment:
   OPENAI_API_KEY   Optional fallback key for OpenAI-compatible APIs
   OPENAI_API_BASE  Optional fallback base URL (default: https://api.openai.com/v1)
   OPENAI_MODEL     Optional fallback model (default: deepseek-chat for DeepSeek base, else gpt-4o-mini)
+  RSSHUB_BASE_URL  RSSHub instance URL for X/Twitter feeds (default: https://rsshub.app)
+  X_ACCOUNTS       Comma-separated X/Twitter accounts to follow (e.g. karpathy,sama,ylecun)
 
 Examples:
   bun scripts/digest.ts --hours 24 --top-n 10 --lang zh
@@ -1081,9 +1119,15 @@ async function main(): Promise<void> {
     console.log(`[digest] Fallback: ${resolvedBase} (model=${resolvedModel})`);
   }
   console.log('');
-  
-  console.log(`[digest] Step 1/5: Fetching ${RSS_FEEDS.length} RSS feeds...`);
-  const allArticles = await fetchAllFeeds(RSS_FEEDS);
+
+  const xFeeds = buildXFeeds();
+  const allFeeds = [...RSS_FEEDS, ...xFeeds];
+  if (xFeeds.length > 0) {
+    console.log(`[digest] X/Twitter accounts: ${xFeeds.map(f => f.name).join(', ')} (via ${RSSHUB_BASE_URL})`);
+  }
+
+  console.log(`[digest] Step 1/5: Fetching ${allFeeds.length} feeds (${RSS_FEEDS.length} RSS + ${xFeeds.length} X)...`);
+  const allArticles = await fetchAllFeeds(allFeeds);
   
   if (allArticles.length === 0) {
     console.error('[digest] Error: No articles fetched from any feed. Check network connection.');
@@ -1152,7 +1196,7 @@ async function main(): Promise<void> {
   const successfulSources = new Set(allArticles.map(a => a.sourceName));
   
   const report = generateDigestReport(finalArticles, highlights, {
-    totalFeeds: RSS_FEEDS.length,
+    totalFeeds: allFeeds.length,
     successFeeds: successfulSources.size,
     totalArticles: allArticles.length,
     filteredArticles: recentArticles.length,
