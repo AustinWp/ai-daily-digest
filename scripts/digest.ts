@@ -1094,13 +1094,34 @@ function generateDigestReport(articles: ScoredArticle[], highlights: string, sta
   const now = new Date();
   const dateStr = now.toISOString().split('T')[0];
   
-  let report = `# 📰 AI 博客每日精选 — ${dateStr}\n\n`;
+  let report = `# 📰 AI 资讯每日精选 — ${dateStr}\n\n`;
   report += `> 来自 ${stats.totalFeeds} 个技术博客和社交媒体源，AI 精选 Top ${articles.length}\n\n`;
 
   // ── Today's Highlights ──
   if (highlights) {
     report += `## 📝 今日看点\n\n`;
     report += `${highlights}\n\n`;
+    report += `---\n\n`;
+  }
+
+  // ── Top 5 Deep Showcase ──
+  if (articles.length >= 3) {
+    report += `## 🏆 今日必读\n\n`;
+    for (let i = 0; i < Math.min(5, articles.length); i++) {
+      const a = articles[i];
+      const medal = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'][i];
+      const catMeta = CATEGORY_META[a.category];
+
+      report += `${medal} **${a.titleZh || a.title}**\n\n`;
+      report += `[${a.title}](${a.link}) — ${a.sourceName} · ${humanizeTime(a.pubDate)} · ${catMeta.emoji} ${catMeta.label}\n\n`;
+      report += `> ${a.summary}\n\n`;
+      if (a.reason) {
+        report += `💡 **为什么值得读**: ${a.reason}\n\n`;
+      }
+      if (a.keywords.length > 0) {
+        report += `🏷️ ${a.keywords.join(', ')}\n\n`;
+      }
+    }
     report += `---\n\n`;
   }
 
@@ -1132,25 +1153,34 @@ function generateDigestReport(articles: ScoredArticle[], highlights: string, sta
     report += `\n---\n\n`;
   }
 
-  // ── Top 3 Deep Showcase ──
-  if (articles.length >= 3) {
-    report += `## 🏆 今日必读\n\n`;
-    for (let i = 0; i < Math.min(5, articles.length); i++) {
-      const a = articles[i];
-      const medal = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'][i];
-      const catMeta = CATEGORY_META[a.category];
-      
-      report += `${medal} **${a.titleZh || a.title}**\n\n`;
-      report += `[${a.title}](${a.link}) — ${a.sourceName} · ${humanizeTime(a.pubDate)} · ${catMeta.emoji} ${catMeta.label}\n\n`;
+  // ── Category-Grouped Articles ──
+  const categoryGroups = new Map<CategoryId, ScoredArticle[]>();
+  for (const a of articles) {
+    const list = categoryGroups.get(a.category) || [];
+    list.push(a);
+    categoryGroups.set(a.category, list);
+  }
+
+  const sortedCategories = Array.from(categoryGroups.entries())
+    .sort((a, b) => b[1].length - a[1].length);
+
+  let globalIndex = 0;
+  for (const [catId, catArticles] of sortedCategories) {
+    const catMeta = CATEGORY_META[catId];
+    report += `## ${catMeta.emoji} ${catMeta.label}\n\n`;
+
+    for (const a of catArticles) {
+      globalIndex++;
+      const scoreTotal = a.scoreBreakdown.relevance + a.scoreBreakdown.quality + a.scoreBreakdown.timeliness;
+
+      report += `### ${globalIndex}. ${a.titleZh || a.title}\n\n`;
+      report += `[${a.title}](${a.link}) — **${a.sourceName}** · ${humanizeTime(a.pubDate)} · ⭐ ${scoreTotal}/30\n\n`;
       report += `> ${a.summary}\n\n`;
-      if (a.reason) {
-        report += `💡 **为什么值得读**: ${a.reason}\n\n`;
-      }
       if (a.keywords.length > 0) {
         report += `🏷️ ${a.keywords.join(', ')}\n\n`;
       }
+      report += `---\n\n`;
     }
-    report += `---\n\n`;
   }
 
   // ── Visual Statistics ──
@@ -1182,40 +1212,8 @@ function generateDigestReport(articles: ScoredArticle[], highlights: string, sta
 
   report += `---\n\n`;
 
-  // ── Category-Grouped Articles ──
-  const categoryGroups = new Map<CategoryId, ScoredArticle[]>();
-  for (const a of articles) {
-    const list = categoryGroups.get(a.category) || [];
-    list.push(a);
-    categoryGroups.set(a.category, list);
-  }
-
-  const sortedCategories = Array.from(categoryGroups.entries())
-    .sort((a, b) => b[1].length - a[1].length);
-
-  let globalIndex = 0;
-  for (const [catId, catArticles] of sortedCategories) {
-    const catMeta = CATEGORY_META[catId];
-    report += `## ${catMeta.emoji} ${catMeta.label}\n\n`;
-
-    for (const a of catArticles) {
-      globalIndex++;
-      const scoreTotal = a.scoreBreakdown.relevance + a.scoreBreakdown.quality + a.scoreBreakdown.timeliness;
-
-      report += `### ${globalIndex}. ${a.titleZh || a.title}\n\n`;
-      report += `[${a.title}](${a.link}) — **${a.sourceName}** · ${humanizeTime(a.pubDate)} · ⭐ ${scoreTotal}/30\n\n`;
-      report += `> ${a.summary}\n\n`;
-      if (a.keywords.length > 0) {
-        report += `🏷️ ${a.keywords.join(', ')}\n\n`;
-      }
-      report += `---\n\n`;
-    }
-  }
-
   // ── Footer ──
-  report += `*生成于 ${dateStr} ${now.toISOString().split('T')[1]?.slice(0, 5) || ''} | 扫描 ${stats.successFeeds} 源 → 获取 ${stats.totalArticles} 篇 → 精选 ${articles.length} 篇*\n`;
-  report += `*基于 [Hacker News Popularity Contest 2025](https://refactoringenglish.com/tools/hn-popularity/) RSS 源列表，由 [Andrej Karpathy](https://x.com/karpathy) 推荐*\n`;
-  report += `*由「懂点儿AI」制作，欢迎关注同名微信公众号获取更多 AI 实用技巧 💡*\n`;
+  report += `*生成于 ${dateStr} ${now.toISOString().split('T')[1]?.slice(0, 5) || ''} | 汇聚 ${stats.totalFeeds} 个技术博客、X/Twitter、Hacker News、Reddit、Product Hunt、Lobste.rs、ClawFeed 日报及 GitHub Trending，经 AI 评分筛选出 Top ${articles.length} 精华内容*\n`;
 
   return report;
 }
