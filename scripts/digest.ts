@@ -108,6 +108,14 @@ const RSS_FEEDS: Array<{ name: string; xmlUrl: string; htmlUrl: string }> = [
   { name: "mjg59.dreamwidth.org", xmlUrl: "https://mjg59.dreamwidth.org/data/rss", htmlUrl: "https://mjg59.dreamwidth.org" },
   { name: "computer.rip", xmlUrl: "https://computer.rip/rss.xml", htmlUrl: "https://computer.rip" },
   { name: "tedunangst.com", xmlUrl: "https://www.tedunangst.com/flak/rss", htmlUrl: "https://tedunangst.com" },
+
+  // ── Additional Sources: HN, Reddit, Product Hunt, Lobste.rs ──
+  { name: "Hacker News Best", xmlUrl: "https://hnrss.org/best", htmlUrl: "https://news.ycombinator.com" },
+  { name: "r/programming", xmlUrl: "https://www.reddit.com/r/programming/top/.rss?t=day", htmlUrl: "https://www.reddit.com/r/programming" },
+  { name: "r/MachineLearning", xmlUrl: "https://www.reddit.com/r/MachineLearning/top/.rss?t=day", htmlUrl: "https://www.reddit.com/r/MachineLearning" },
+  { name: "r/LocalLLaMA", xmlUrl: "https://www.reddit.com/r/LocalLLaMA/top/.rss?t=day", htmlUrl: "https://www.reddit.com/r/LocalLLaMA" },
+  { name: "Product Hunt", xmlUrl: "https://www.producthunt.com/feed", htmlUrl: "https://www.producthunt.com" },
+  { name: "Lobste.rs", xmlUrl: "https://lobste.rs/rss", htmlUrl: "https://lobste.rs" },
 ];
 
 // X/Twitter feeds via RSSHub proxy
@@ -186,6 +194,160 @@ interface GeminiSummaryResult {
 
 interface AIClient {
   call(prompt: string): Promise<string>;
+}
+
+interface TrendingRepo {
+  name: string;
+  url: string;
+  description: string;
+  stars: number;
+  todayStars: number;
+  language: string;
+  forks: number;
+}
+
+// ============================================================================
+// ClawFeed & GitHub Trending
+// ============================================================================
+
+async function fetchClawFeedDigest(): Promise<string> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FEED_FETCH_TIMEOUT_MS);
+
+    const response = await fetch('https://clawfeed.kevinhe.io/api/digests?type=daily&limit=1&offset=0', {
+      signal: controller.signal,
+      headers: { 'Accept': 'application/json' },
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const data = await response.json() as Array<{ content?: string }>;
+    const content = data?.[0]?.content || '';
+    if (content) {
+      console.log(`[digest] ClawFeed: fetched daily digest (${content.length} chars)`);
+    }
+    return content;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.warn(`[digest] ClawFeed: fetch failed (${msg})`);
+    return '';
+  }
+}
+
+function extractClawFeedSections(markdown: string): string {
+  if (!markdown) return '';
+
+  // Extract key sections: headlines, top 10, recommended follows, observations
+  const sections = ['🔥 今日头条', '📰 精选 Top 10', '👀 今日推荐关注', '🧹 今日建议取关', '📊 今日观察'];
+  let result = '';
+
+  for (const section of sections) {
+    const pattern = new RegExp(`## ${section.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\n([\\s\\S]*?)(?=\\n## |$)`);
+    const match = markdown.match(pattern);
+    if (match) {
+      result += `### ${section}\n\n${match[1].trim()}\n\n`;
+    }
+  }
+
+  return result || markdown;
+}
+
+async function fetchGitHubTrendingPage(language?: string): Promise<TrendingRepo[]> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FEED_FETCH_TIMEOUT_MS);
+
+    const langParam = language ? `/${language}` : '';
+    const url = `https://github.com/trending${langParam}?since=daily`;
+
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'AI-Daily-Digest/1.0',
+        'Accept': 'text/html',
+      },
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const html = await response.text();
+    const repos: TrendingRepo[] = [];
+
+    const articles = html.split('<article class="Box-row">');
+    for (let i = 1; i < articles.length; i++) {
+      const art = articles[i];
+
+      // repo path: <h2 ...><a href="/owner/repo">
+      const repoMatch = art.match(/<h2[^>]*>\s*<a[^>]*href="\/([^"]+)"/);
+      if (!repoMatch) continue;
+
+      const name = repoMatch[1];
+      const url = `https://github.com/${name}`;
+
+      // description
+      const descMatch = art.match(/<p class="col-9[^"]*">\s*([\s\S]*?)\s*<\/p>/);
+      const description = descMatch ? descMatch[1].replace(/<[^>]*>/g, '').replace(/&amp;/g, '&').trim() : '';
+
+      // language
+      const langMatch = art.match(/itemprop="programmingLanguage"[^>]*>([^<]+)/);
+      const lang = langMatch ? langMatch[1].trim() : '';
+
+      // total stars
+      const starsMatch = art.match(/href="[^"]*\/stargazers"[^>]*>\s*<svg[^>]*>[\s\S]*?<\/svg>\s*([\d,]+)/);
+      const stars = starsMatch ? parseInt(starsMatch[1].replace(/,/g, ''), 10) : 0;
+
+      // forks
+      const forkMatch = art.match(/href="[^"]*\/forks"[^>]*>\s*<svg[^>]*>[\s\S]*?<\/svg>\s*([\d,]+)/);
+      const forks = forkMatch ? parseInt(forkMatch[1].replace(/,/g, ''), 10) : 0;
+
+      // today stars
+      const todayMatch = art.match(/([\d,]+)\s*stars today/);
+      const todayStars = todayMatch ? parseInt(todayMatch[1].replace(/,/g, ''), 10) : 0;
+
+      repos.push({ name, url, description, stars, todayStars, language: lang, forks });
+    }
+
+    return repos;
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.warn(`[digest] GitHub Trending${language ? ` (${language})` : ''}: fetch failed (${msg})`);
+    return [];
+  }
+}
+
+async function fetchGitHubTrending(): Promise<TrendingRepo[]> {
+  const [allLang, pythonLang] = await Promise.all([
+    fetchGitHubTrendingPage(),
+    fetchGitHubTrendingPage('python'),
+  ]);
+
+  // Merge and dedup by repo name
+  const seen = new Set<string>();
+  const merged: TrendingRepo[] = [];
+
+  for (const repo of [...allLang, ...pythonLang]) {
+    if (!seen.has(repo.name)) {
+      seen.add(repo.name);
+      merged.push(repo);
+    }
+  }
+
+  // Sort by today's stars descending, take top 15
+  merged.sort((a, b) => b.todayStars - a.todayStars);
+  const result = merged.slice(0, 15);
+
+  console.log(`[digest] GitHub Trending: ${allLang.length} all-lang + ${pythonLang.length} Python → ${merged.length} unique → Top ${result.length}`);
+  return result;
+}
+
+function formatStarCount(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return String(n);
 }
 
 // ============================================================================
@@ -928,7 +1090,7 @@ function generateDigestReport(articles: ScoredArticle[], highlights: string, sta
   filteredArticles: number;
   hours: number;
   lang: string;
-}): string {
+}, clawfeedContent: string, trendingRepos: TrendingRepo[]): string {
   const now = new Date();
   const dateStr = now.toISOString().split('T')[0];
   
@@ -940,6 +1102,34 @@ function generateDigestReport(articles: ScoredArticle[], highlights: string, sta
     report += `## 📝 今日看点\n\n`;
     report += `${highlights}\n\n`;
     report += `---\n\n`;
+  }
+
+  // ── ClawFeed Daily Digest ──
+  if (clawfeedContent) {
+    report += `## 🌐 ClawFeed 日报精选\n\n`;
+    report += `> 来源：[ClawFeed](https://clawfeed.kevinhe.io) — AI 驱动的多源新闻聚合\n\n`;
+    report += extractClawFeedSections(clawfeedContent);
+    report += `---\n\n`;
+  }
+
+  // ── GitHub Trending ──
+  if (trendingRepos.length > 0) {
+    const AI_KEYWORDS = /\b(ai|llm|gpt|claude|gemini|openai|anthropic|ml|machine.?learning|deep.?learning|neural|transformer|diffusion|agent|rag|langchain|embedding|fine.?tun|lora|qlora|stable.?diffusion|whisper|llama|mistral|copilot|chatbot|nlp|computer.?vision|generative)\b/i;
+
+    report += `## 🔥 GitHub Trending\n\n`;
+    report += `> 今日热门开源项目（全语言 + Python）\n\n`;
+    report += `| # | 项目 | 描述 | ⭐ 总星 | 📈 今日 | 语言 |\n`;
+    report += `|---|------|------|---------|---------|------|\n`;
+
+    for (let i = 0; i < trendingRepos.length; i++) {
+      const r = trendingRepos[i];
+      const isAI = AI_KEYWORDS.test(r.description) || AI_KEYWORDS.test(r.name);
+      const aiTag = isAI ? ' 🤖' : '';
+      const desc = r.description.length > 60 ? r.description.slice(0, 57) + '...' : r.description;
+      report += `| ${i + 1} | [${r.name}](${r.url})${aiTag} | ${desc} | ${formatStarCount(r.stars)} | +${r.todayStars} | ${r.language || '-'} |\n`;
+    }
+
+    report += `\n---\n\n`;
   }
 
   // ── Top 3 Deep Showcase ──
@@ -1126,9 +1316,13 @@ async function main(): Promise<void> {
     console.log(`[digest] X/Twitter accounts: ${xFeeds.map(f => f.name).join(', ')} (via ${RSSHUB_BASE_URL})`);
   }
 
-  console.log(`[digest] Step 1/5: Fetching ${allFeeds.length} feeds (${RSS_FEEDS.length} RSS + ${xFeeds.length} X)...`);
-  const allArticles = await fetchAllFeeds(allFeeds);
-  
+  console.log(`[digest] Step 1/5: Fetching ${allFeeds.length} feeds + ClawFeed + GitHub Trending (parallel)...`);
+  const [allArticles, clawfeedContent, trendingRepos] = await Promise.all([
+    fetchAllFeeds(allFeeds),
+    fetchClawFeedDigest(),
+    fetchGitHubTrending(),
+  ]);
+
   if (allArticles.length === 0) {
     console.error('[digest] Error: No articles fetched from any feed. Check network connection.');
     process.exit(1);
@@ -1202,7 +1396,7 @@ async function main(): Promise<void> {
     filteredArticles: recentArticles.length,
     hours,
     lang,
-  });
+  }, clawfeedContent, trendingRepos);
   
   await mkdir(dirname(outputPath), { recursive: true });
   await writeFile(outputPath, report);
