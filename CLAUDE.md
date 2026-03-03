@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-全自动每日技术内容聚合系统。从 90+ 技术博客（来源于 HN Popularity Contest 2025）、25+ X/Twitter 账号、Hacker News、Reddit、Product Hunt、Lobste.rs 抓取内容，使用 AI 进行评分、分类、摘要。同时聚合 ClawFeed 日报和 GitHub Trending 热门项目。生成 Markdown 格式的每日精选报告，自动推送到 GitHub 和微信。
+全自动每日技术内容聚合系统。从 104 个技术博客（含 HN Popularity Contest 2025 精选 + 设计/生成式 AI 专业博客）、30 个 X/Twitter 账号、Hacker News、7 个 Reddit 子版块、Product Hunt、Lobste.rs 抓取内容，使用 AI 进行评分、分类、摘要。同时聚合 ClawFeed 日报和 GitHub Trending 热门项目。生成 Markdown 格式的每日精选报告，自动推送到 GitHub 和微信。
 
 ## 技术栈
 
@@ -58,8 +58,8 @@ bun scripts/digest.ts --hours 24 --top-n 15 --lang zh --output digest.md
 5. **报告** — 渲染 Markdown，含 ClawFeed 章节、GitHub Trending 表格、Mermaid 图表、分类分组
 
 ### 数据源
-- **RSS Feeds（96 个）** — 90 个技术博客 + HN Best + Reddit (3) + Product Hunt + Lobste.rs
-- **X/Twitter** — 25+ 账号通过 RSSHub 代理
+- **RSS Feeds（114 个）** — 96 个技术博客 + 8 个设计/生成式 AI 博客 + HN Best + Reddit (7) + Product Hunt + Lobste.rs
+- **X/Twitter** — 30 个账号通过 RSSHub 代理（含 @_akhaliq、@DrJimFan、@hardmaru、@LumaLabsAI、@huggingface）
 - **ClawFeed** — AI 驱动的多源新闻聚合日报（独立章节，不参与评分）
 - **GitHub Trending** — 每日热门开源项目，全语言 + Python（独立章节，不参与评分）
 
@@ -78,14 +78,15 @@ MAX_CONCURRENT_GEMINI = 2        # 最多 2 个并发 AI 批次
 ```
 
 ### 报告结构
-1. `📰 AI 资讯每日精选` — 标题
+1. `📰 AI 资讯每日精选` — 标题 + 信源概览与栏目导航
 2. `📝 今日看点` — AI 生成的趋势总结
 3. `🏆 今日必读` — 全源 Top 5 文章深度展示
 4. `🌐 ClawFeed 日报精选` — ClawFeed 日报内容（头条、Top 10、推荐关注、今日观察）
 5. `🔥 GitHub Trending` — 今日热门开源项目表格（15 个，AI 相关标 🤖）
 6. 分类文章列表 — 按分类分组展示所有精选文章
-7. `📊 数据概览` — 统计数据 + Mermaid 图表
-8. 页脚
+7. `🎨 Design & Generative AI` — 设计与生成式 AI 专题（生成式 UI / 图片 / 世界模型 / 视频，按关键词匹配 + AI 子分类）
+8. `📊 数据概览` — 统计数据 + Mermaid 图表
+9. 页脚
 
 ### 分类体系
 `ai-ml` | `security` | `engineering` | `tools` | `opinion` | `other`

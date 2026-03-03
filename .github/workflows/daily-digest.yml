@@ -48,7 +48,7 @@ jobs:
           OPENAI_API_BASE: https://api.deepseek.com/v1
           OPENAI_MODEL: deepseek-chat
           RSSHUB_BASE_URL: http://localhost:1200
-          X_ACCOUNTS: ${{ vars.X_ACCOUNTS || 'grok,xingpt,FinanceYF5,sodawhite_dev,yetone,runes_leo,abskoop,egeberkina,vasuman,eptwts,EXM7777,steipete,rileybrown,yangyi,manateelazycat,lifesinger,yuxiyou,gregisenberg,oran_ge,LangChain,OpenAI,AnthropicAI,Khazix0918,dotey,deepseek_ai' }}
+          X_ACCOUNTS: ${{ vars.X_ACCOUNTS || 'grok,xingpt,FinanceYF5,sodawhite_dev,yetone,runes_leo,abskoop,egeberkina,vasuman,eptwts,EXM7777,steipete,rileybrown,yangyi,manateelazycat,lifesinger,yuxiyou,gregisenberg,oran_ge,LangChain,OpenAI,AnthropicAI,Khazix0918,dotey,deepseek_ai,_akhaliq,DrJimFan,hardmaru,LumaLabsAI,huggingface' }}
         run: |
           mkdir -p digests
           bun scripts/digest.ts \

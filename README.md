@@ -1,10 +1,10 @@
 # AI Daily Digest
 
-每天自动从 **90+ 顶级技术博客**、**25+ X/Twitter 账号**、**Hacker News**、**Reddit**、**Product Hunt**、**Lobste.rs** 抓取最新内容，融合 **ClawFeed 日报** 和 **GitHub Trending** 热门项目，通过 **Gemini AI** 智能评分、分类和摘要，生成结构化的中文每日技术精选日报，并自动推送到微信。
+每天自动从 **104 个技术博客**、**30 个 X/Twitter 账号**、**Hacker News**、**7 个 Reddit 子版块**、**Product Hunt**、**Lobste.rs** 抓取最新内容，融合 **ClawFeed 日报** 和 **GitHub Trending** 热门项目，通过 **Gemini AI** 智能评分、分类和摘要，生成结构化的中文每日技术精选日报，并自动推送到微信。
 
 ## 它能做什么
 
-- **多源聚合** — 订阅 96 个 RSS 源（技术博客 + HN + Reddit + Product Hunt + Lobste.rs）加上 25+ 个 X/Twitter 技术大V账号
+- **多源聚合** — 订阅 114 个 RSS 源（技术博客 + HN + Reddit + Product Hunt + Lobste.rs）加上 30 个 X/Twitter 技术账号
 - **ClawFeed 日报** — 聚合 AI 驱动的多源新闻日报，包含头条、精选 Top 10、推荐关注
 - **GitHub Trending** — 每日热门开源项目（全语言 + Python），AI 相关项目自动标记
 - **AI 智能评分** — 使用 Gemini AI 从相关性、质量、时效性三个维度（各 1-10 分）对每篇文章打分
@@ -18,8 +18,8 @@
 ## 工作流程
 
 ```
-RSS Feeds (96个源)     ──┐
-X/Twitter (25+账号)    ──┤
+RSS Feeds (114个源)    ──┐
+X/Twitter (30个账号)   ──┤
                          ├──→ 抓取文章 → 时间过滤 → AI 评分 → 选取 Top N → AI 摘要 ──┐
 ClawFeed 日报          ──┤                                                              ├──→ 生成日报 → 推送
 GitHub Trending        ──┘                                                              ┘
@@ -39,27 +39,81 @@ GitHub Trending        ──┘                                                
 
 每份日报包含：
 
+- **信源说明 + 栏目导航** — 头部展示信源概览和本期内容目录
 - **今日看点** — 3-5 句宏观趋势总结
 - **今日必读 Top 5** — 全源最高分文章详细展示（含摘要、推荐理由）
 - **ClawFeed 日报精选** — 头条新闻、精选 Top 10、推荐关注、今日观察
 - **GitHub Trending** — 今日热门开源项目表格（15 个，AI 项目标 🤖）
 - **分类文章列表** — 按六大分类展示所有精选文章
+- **Design & Generative AI** — 设计与生成式 AI 专题（生成式 UI / 图片 / 世界模型 / 视频）
 - **数据概览** — 来源数、文章数统计表 + 可视化图表
 
 > 查看历史日报：[`digests/`](./digests/) 目录
 
 ## 数据源
 
-| 来源 | 数量 | 说明 |
-|------|------|------|
-| 技术博客 RSS | 90 | [HN Popularity Contest 2025](https://hnblogs.substack.com/) 精选 |
-| X/Twitter | 25+ | 技术大V账号（通过 RSSHub 代理） |
-| Hacker News | 1 | Best Stories |
-| Reddit | 3 | r/programming、r/MachineLearning、r/LocalLLaMA |
-| Product Hunt | 1 | 每日热门产品 |
-| Lobste.rs | 1 | 高质量技术社区 |
-| ClawFeed | 1 | AI 驱动的多源新闻聚合日报 |
-| GitHub Trending | 2 | 全语言 + Python 热门项目 |
+### RSS Feeds（108 个）
+
+**96 个技术博客** — 来自 [HN Popularity Contest 2025](https://hnblogs.substack.com/) 精选
+
+<details>
+<summary>展开完整博客列表</summary>
+
+simonwillison.net · jeffgeerling.com · seangoedecke.com · krebsonsecurity.com · daringfireball.net · ericmigi.com · antirez.com · idiallo.com · maurycyz.com · pluralistic.net · shkspr.mobi · lcamtuf.substack.com · mitchellh.com · dynomight.net · utcc.utoronto.ca/~cks · xeiaso.net · devblogs.microsoft.com/oldnewthing · righto.com · lucumr.pocoo.org · skyfall.dev · garymarcus.substack.com · rachelbythebay.com · overreacted.io · timsh.org · johndcook.com · gilesthomas.com · matklad.github.io · derekthompson.org · evanhahn.com · terriblesoftware.org · rakhim.exotext.com · joanwestenberg.com · xania.org · micahflee.com · nesbitt.io · construction-physics.com · tedium.co · susam.net · entropicthoughts.com · buttondown.com/hillelwayne · dwarkesh.com · borretti.me · wheresyoured.at · jayd.ml · minimaxir.com · geohot.github.io · paulgraham.com · filfre.net · blog.jim-nielsen.com · dfarq.homeip.net · jyn.dev · geoffreylitt.com · downtowndougbrown.com · brutecat.com · eli.thegreenplace.net · abortretry.fail · fabiensanglard.net · oldvcr.blogspot.com · bogdanthegeek.github.io · hugotunius.se · gwern.net · berthub.eu · chadnauseam.com · simone.org · it-notes.dragas.net · beej.us · hey.paris · danielwirtz.com · matduggan.com · refactoringenglish.com · worksonmymachine.substack.com · philiplaine.com · steveblank.com · bernsteinbear.com · danieldelaney.net · troyhunt.com · herman.bearblog.dev · tomrenner.com · blog.pixelmelt.dev · martinalderson.com · danielchasehooper.com · chiark.greenend.org.uk/~sgtatham · grantslatton.com · experimental-history.com · anildash.com · aresluna.org · michael.stapelberg.ch · miguelgrinberg.com · keygen.sh · mjg59.dreamwidth.org · computer.rip · tedunangst.com
+
+</details>
+
+**8 个设计与生成式 AI 博客**
+
+| 博客 | 侧重 |
+|------|------|
+| Hugging Face Blog | 开源模型首发、Diffusers 库 |
+| Lilian Weng (OpenAI) | Diffusion / World Model 技术综述 |
+| The Decoder | 生成式 AI 专业新闻 |
+| Replicate Blog | 模型部署、评测 |
+| NVIDIA Technical Blog | NeRF、3D Gaussian、视频生成 |
+| Stability AI Blog | Stable Diffusion 一手发布 |
+| Google DeepMind Blog | Imagen、Veo、Genie |
+| Runway Research | Gen-2/Gen-3 研究论文 |
+
+**聚合平台**
+
+| 平台 | 说明 |
+|------|------|
+| Hacker News Best | HN 精选 |
+| Product Hunt | 每日热门产品 |
+| Lobste.rs | 高质量技术社区 |
+
+**7 个 Reddit 子版块**
+
+| Sub | 方向 |
+|-----|------|
+| r/programming | 通用编程 |
+| r/MachineLearning | 机器学习学术 |
+| r/LocalLLaMA | 本地 LLM |
+| r/StableDiffusion | AI 图片生成 |
+| r/midjourney | Midjourney |
+| r/comfyui | ComfyUI 工作流 |
+| r/singularity | AI 前沿讨论 |
+
+### X/Twitter（30 个账号，通过 RSSHub 代理）
+
+| 账号 | 方向 |
+|------|------|
+| @grok · @xingpt · @OpenAI · @AnthropicAI · @deepseek_ai · @LangChain | AI 产品 & 平台 |
+| @_akhaliq · @DrJimFan · @hardmaru · @huggingface · @LumaLabsAI | AI 研究 & 生成式 AI |
+| @dotey · @Khazix0918 · @FinanceYF5 · @EXM7777 | 中文 AI 资讯 |
+| @sodawhite_dev · @yetone · @runes_leo · @abskoop · @egeberkina · @vasuman · @eptwts · @steipete · @rileybrown · @gregisenberg · @oran_ge | 开发者 & 独立开发 |
+| @yangyi · @manateelazycat · @lifesinger · @yuxiyou | 中文技术社区 |
+
+### 独立数据源（不参与评分）
+
+| 数据源 | 说明 |
+|--------|------|
+| ClawFeed 日报 | AI 驱动的多源新闻聚合 |
+| GitHub Trending | 全语言 + Python 热门项目 |
+
+**合计：114 个 RSS + 30 个 X/Twitter + ClawFeed + GitHub Trending = 146 信息源**
 
 ## 技术栈
 

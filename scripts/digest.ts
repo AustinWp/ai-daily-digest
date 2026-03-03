@@ -14,7 +14,7 @@ const FEED_CONCURRENCY = 10;
 const GEMINI_BATCH_SIZE = 10;
 const MAX_CONCURRENT_GEMINI = 2;
 
-// 90 RSS feeds from Hacker News Popularity Contest 2025 (curated by Karpathy)
+// 96 RSS feeds from Hacker News Popularity Contest 2025 (curated by Karpathy)
 const RSS_FEEDS: Array<{ name: string; xmlUrl: string; htmlUrl: string }> = [
   { name: "simonwillison.net", xmlUrl: "https://simonwillison.net/atom/everything/", htmlUrl: "https://simonwillison.net" },
   { name: "jeffgeerling.com", xmlUrl: "https://www.jeffgeerling.com/blog.xml", htmlUrl: "https://jeffgeerling.com" },
@@ -109,11 +109,25 @@ const RSS_FEEDS: Array<{ name: string; xmlUrl: string; htmlUrl: string }> = [
   { name: "computer.rip", xmlUrl: "https://computer.rip/rss.xml", htmlUrl: "https://computer.rip" },
   { name: "tedunangst.com", xmlUrl: "https://www.tedunangst.com/flak/rss", htmlUrl: "https://tedunangst.com" },
 
+  // ── Design & Generative AI Blogs ──
+  { name: "Hugging Face Blog", xmlUrl: "https://huggingface.co/blog/feed.xml", htmlUrl: "https://huggingface.co/blog" },
+  { name: "Lilian Weng", xmlUrl: "https://lilianweng.github.io/index.xml", htmlUrl: "https://lilianweng.github.io" },
+  { name: "The Decoder", xmlUrl: "https://the-decoder.com/feed/", htmlUrl: "https://the-decoder.com" },
+  { name: "Replicate Blog", xmlUrl: "https://replicate.com/blog/rss", htmlUrl: "https://replicate.com/blog" },
+  { name: "NVIDIA Technical Blog", xmlUrl: "https://developer.nvidia.com/blog/feed/", htmlUrl: "https://developer.nvidia.com/blog" },
+  { name: "Stability AI Blog", xmlUrl: "https://stability.ai/blog/feed", htmlUrl: "https://stability.ai/blog" },
+  { name: "Google DeepMind Blog", xmlUrl: "https://deepmind.google/blog/rss.xml", htmlUrl: "https://deepmind.google/blog" },
+  { name: "Runway Research", xmlUrl: "https://research.runwayml.com/feed.xml", htmlUrl: "https://research.runwayml.com" },
+
   // ── Additional Sources: HN, Reddit, Product Hunt, Lobste.rs ──
   { name: "Hacker News Best", xmlUrl: "https://hnrss.org/best", htmlUrl: "https://news.ycombinator.com" },
   { name: "r/programming", xmlUrl: "https://www.reddit.com/r/programming/top/.rss?t=day", htmlUrl: "https://www.reddit.com/r/programming" },
   { name: "r/MachineLearning", xmlUrl: "https://www.reddit.com/r/MachineLearning/top/.rss?t=day", htmlUrl: "https://www.reddit.com/r/MachineLearning" },
   { name: "r/LocalLLaMA", xmlUrl: "https://www.reddit.com/r/LocalLLaMA/top/.rss?t=day", htmlUrl: "https://www.reddit.com/r/LocalLLaMA" },
+  { name: "r/StableDiffusion", xmlUrl: "https://www.reddit.com/r/StableDiffusion/top/.rss?t=day", htmlUrl: "https://www.reddit.com/r/StableDiffusion" },
+  { name: "r/midjourney", xmlUrl: "https://www.reddit.com/r/midjourney/top/.rss?t=day", htmlUrl: "https://www.reddit.com/r/midjourney" },
+  { name: "r/comfyui", xmlUrl: "https://www.reddit.com/r/comfyui/top/.rss?t=day", htmlUrl: "https://www.reddit.com/r/comfyui" },
+  { name: "r/singularity", xmlUrl: "https://www.reddit.com/r/singularity/top/.rss?t=day", htmlUrl: "https://www.reddit.com/r/singularity" },
   { name: "Product Hunt", xmlUrl: "https://www.producthunt.com/feed", htmlUrl: "https://www.producthunt.com" },
   { name: "Lobste.rs", xmlUrl: "https://lobste.rs/rss", htmlUrl: "https://lobste.rs" },
 ];
@@ -204,6 +218,101 @@ interface TrendingRepo {
   todayStars: number;
   language: string;
   forks: number;
+}
+
+// ============================================================================
+// Design & Generative AI
+// ============================================================================
+
+type DesignSubCategory = 'generative-ui' | 'generative-image' | 'world-model' | 'generative-video';
+
+const DESIGN_SUB_CATEGORY_META: Record<DesignSubCategory, { emoji: string; label: string; labelEn: string }> = {
+  'generative-ui':    { emoji: '🖥️', label: '生成式 UI', labelEn: 'Generative UI' },
+  'generative-image': { emoji: '🖼️', label: '生成式图片', labelEn: 'Generative Image' },
+  'world-model':      { emoji: '🌍', label: '世界模型 / 3D', labelEn: 'World Model / 3D' },
+  'generative-video': { emoji: '🎬', label: '生成式视频', labelEn: 'Generative Video' },
+};
+
+interface DesignArticle {
+  title: string;
+  link: string;
+  pubDate: Date;
+  sourceName: string;
+  subCategory: DesignSubCategory;
+  titleZh: string;
+  oneLiner: string;
+}
+
+const DESIGN_KEYWORDS_REGEX = /\b(v0\.dev|claude.?artifact|a2ui|pencil\.li|generative.?ui|ai.?ui|ui.?generat|stable.?diffusion|midjourney|dall[\-\.]?e|flux\.?1|comfyui|nanobanana|firefly|controlnet|lora|img2img|txt2img|inpaint|outpaint|dreambooth|sdxl|sd3|imagen|ideogram|recraft|playground.?ai|world.?model|gaussian.?splat|nerf|3d.?generat|scene.?generat|point.?cloud|radiance.?field|3d.?gaussian|instant.?ngp|sora|runway|pika|kling|veo|gen[\-\s]?[23]|luma.?ai|animate.?diff|svd|stable.?video|mora|cogvideo|video.?generat|text.?to.?video)\b/i;
+
+function matchesDesignKeywords(article: { title: string; description: string; keywords: string[]; sourceName: string }): boolean {
+  const text = `${article.title} ${article.description} ${article.keywords.join(' ')} ${article.sourceName}`;
+  return DESIGN_KEYWORDS_REGEX.test(text);
+}
+
+function buildDesignCategorizationPrompt(articles: Array<{ index: number; title: string; description: string; sourceName: string }>, lang: string): string {
+  const langLabel = lang === 'zh' ? '中文' : 'English';
+  const items = articles.map(a => `[${a.index}] "${a.title}" — ${a.sourceName}\n    ${a.description.slice(0, 200)}`).join('\n');
+  return `You are a tech editor. Classify each article into ONE sub-category and generate a ${langLabel} title + one-liner summary.
+
+Sub-categories:
+- generative-ui: AI-powered UI generation (v0, Claude Artifacts, Vercel AI SDK UI, etc.)
+- generative-image: AI image generation (Stable Diffusion, Midjourney, DALL-E, Flux, ComfyUI, etc.)
+- world-model: 3D/world models (NeRF, Gaussian Splatting, 3D generation, scene generation)
+- generative-video: AI video generation (Sora, Runway, Pika, Kling, Veo, etc.)
+
+Articles:
+${items}
+
+Return ONLY valid JSON (no markdown fences):
+{"results":[{"index":0,"subCategory":"generative-image","titleZh":"中文标题","oneLiner":"一句话摘要"}]}`;
+}
+
+async function categorizeDesignArticles(
+  candidates: Array<{ index: number; title: string; link: string; pubDate: Date; description: string; sourceName: string; keywords: string[] }>,
+  aiClient: AIClient,
+  lang: string,
+): Promise<DesignArticle[]> {
+  if (candidates.length === 0) return [];
+
+  const prompt = buildDesignCategorizationPrompt(
+    candidates.map((c, i) => ({ index: i, title: c.title, description: c.description, sourceName: c.sourceName })),
+    lang,
+  );
+
+  try {
+    const raw = await aiClient.call(prompt);
+    const cleaned = raw.replace(/```(?:json)?\s*/g, '').replace(/```\s*/g, '').trim();
+    const parsed = JSON.parse(cleaned) as { results: Array<{ index: number; subCategory: string; titleZh: string; oneLiner: string }> };
+
+    const validSubs = new Set<string>(['generative-ui', 'generative-image', 'world-model', 'generative-video']);
+
+    return parsed.results
+      .filter(r => r.index >= 0 && r.index < candidates.length)
+      .map(r => {
+        const c = candidates[r.index];
+        return {
+          title: c.title,
+          link: c.link,
+          pubDate: c.pubDate,
+          sourceName: c.sourceName,
+          subCategory: (validSubs.has(r.subCategory) ? r.subCategory : 'generative-image') as DesignSubCategory,
+          titleZh: r.titleZh || c.title,
+          oneLiner: r.oneLiner || c.description.slice(0, 100),
+        };
+      });
+  } catch (err) {
+    console.warn(`[digest] ⚠️ Design categorization failed: ${err instanceof Error ? err.message : String(err)}`);
+    return candidates.map(c => ({
+      title: c.title,
+      link: c.link,
+      pubDate: c.pubDate,
+      sourceName: c.sourceName,
+      subCategory: 'generative-image' as DesignSubCategory,
+      titleZh: c.title,
+      oneLiner: c.description.slice(0, 100),
+    }));
+  }
 }
 
 // ============================================================================
@@ -1079,6 +1188,35 @@ function generateTagCloud(articles: ScoredArticle[]): string {
     .join(' · ');
 }
 
+function renderDesignSection(designArticles: DesignArticle[]): string {
+  if (designArticles.length === 0) return '';
+
+  let section = `## 🎨 Design & Generative AI\n\n`;
+
+  const subCatOrder: DesignSubCategory[] = ['generative-ui', 'generative-image', 'world-model', 'generative-video'];
+  const grouped = new Map<DesignSubCategory, DesignArticle[]>();
+  for (const a of designArticles) {
+    const list = grouped.get(a.subCategory) || [];
+    list.push(a);
+    grouped.set(a.subCategory, list);
+  }
+
+  for (const sub of subCatOrder) {
+    const items = grouped.get(sub);
+    if (!items || items.length === 0) continue;
+    const meta = DESIGN_SUB_CATEGORY_META[sub];
+    section += `### ${meta.emoji} ${meta.label}\n\n`;
+    for (const a of items) {
+      const time = humanizeTime(a.pubDate);
+      section += `- **[${a.titleZh}](${a.link})** — ${a.sourceName} · ${time}\n`;
+      section += `  > ${a.oneLiner}\n\n`;
+    }
+  }
+
+  section += `---\n\n`;
+  return section;
+}
+
 // ============================================================================
 // Report Generation
 // ============================================================================
@@ -1090,12 +1228,15 @@ function generateDigestReport(articles: ScoredArticle[], highlights: string, sta
   filteredArticles: number;
   hours: number;
   lang: string;
-}, clawfeedContent: string, trendingRepos: TrendingRepo[]): string {
+}, clawfeedContent: string, trendingRepos: TrendingRepo[], designArticles: DesignArticle[]): string {
   const now = new Date();
   const dateStr = now.toISOString().split('T')[0];
-  
+
   let report = `# 📰 AI 资讯每日精选 — ${dateStr}\n\n`;
-  report += `> 来自 ${stats.totalFeeds} 个技术博客和社交媒体源，AI 精选 Top ${articles.length}\n\n`;
+  report += `> 汇聚 ${stats.totalFeeds}+ 技术博客、X/Twitter、Hacker News、Reddit、Product Hunt、\n`;
+  report += `> Lobste.rs、ClawFeed 日报及 GitHub Trending，经 AI 评分筛选。\n`;
+  report += `>\n`;
+  report += `> **本期内容**：🏆 今日必读 · 🌐 ClawFeed 日报 · 🔥 GitHub Trending · 📂 分类精选 · 🎨 设计与生成式 AI · 📊 数据概览\n\n`;
 
   // ── Today's Highlights ──
   if (highlights) {
@@ -1182,6 +1323,9 @@ function generateDigestReport(articles: ScoredArticle[], highlights: string, sta
       report += `---\n\n`;
     }
   }
+
+  // ── Design & Generative AI ──
+  report += renderDesignSection(designArticles);
 
   // ── Visual Statistics ──
   report += `## 📊 数据概览\n\n`;
@@ -1384,9 +1528,16 @@ async function main(): Promise<void> {
   
   console.log(`[digest] Step 5/5: Generating today's highlights...`);
   const highlights = await generateHighlights(finalArticles, aiClient, lang);
-  
+
+  // ── Design & Generative AI candidates ──
+  const designCandidates = scoredArticles
+    .filter(a => matchesDesignKeywords({ title: a.title, description: a.description, keywords: a.breakdown.keywords, sourceName: a.sourceName }))
+    .map((a, i) => ({ index: i, title: a.title, link: a.link, pubDate: a.pubDate, description: a.description, sourceName: a.sourceName, keywords: a.breakdown.keywords }));
+  console.log(`[digest] Design & Generative AI candidates: ${designCandidates.length} keyword-matched articles`);
+  const designArticles = await categorizeDesignArticles(designCandidates, aiClient, lang);
+
   const successfulSources = new Set(allArticles.map(a => a.sourceName));
-  
+
   const report = generateDigestReport(finalArticles, highlights, {
     totalFeeds: allFeeds.length,
     successFeeds: successfulSources.size,
@@ -1394,7 +1545,7 @@ async function main(): Promise<void> {
     filteredArticles: recentArticles.length,
     hours,
     lang,
-  }, clawfeedContent, trendingRepos);
+  }, clawfeedContent, trendingRepos, designArticles);
   
   await mkdir(dirname(outputPath), { recursive: true });
   await writeFile(outputPath, report);
