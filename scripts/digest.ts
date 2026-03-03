@@ -245,8 +245,10 @@ interface DesignArticle {
 
 const DESIGN_KEYWORDS_REGEX = /\b(v0\.dev|claude.?artifact|a2ui|pencil\.li|generative.?ui|ai.?ui|ui.?generat|stable.?diffusion|midjourney|dall[\-\.]?e|flux\.?1|comfyui|nanobanana|firefly|controlnet|lora|img2img|txt2img|inpaint|outpaint|dreambooth|sdxl|sd3|imagen|ideogram|recraft|playground.?ai|world.?model|gaussian.?splat|nerf|3d.?generat|scene.?generat|point.?cloud|radiance.?field|3d.?gaussian|instant.?ngp|sora|runway|pika|kling|veo|gen[\-\s]?[23]|luma.?ai|animate.?diff|svd|stable.?video|mora|cogvideo|video.?generat|text.?to.?video)\b/i;
 
-function matchesDesignKeywords(article: { title: string; description: string; keywords: string[]; sourceName: string }): boolean {
-  const text = `${article.title} ${article.description} ${article.keywords.join(' ')} ${article.sourceName}`;
+const MAX_DESIGN_CANDIDATES = 15;
+
+function matchesDesignKeywords(article: { title: string; keywords: string[] }): boolean {
+  const text = `${article.title} ${article.keywords.join(' ')}`;
   return DESIGN_KEYWORDS_REGEX.test(text);
 }
 
@@ -1530,8 +1532,16 @@ async function main(): Promise<void> {
   const highlights = await generateHighlights(finalArticles, aiClient, lang);
 
   // ── Design & Generative AI candidates ──
+  const seenDesignTitles = new Set<string>();
   const designCandidates = scoredArticles
-    .filter(a => matchesDesignKeywords({ title: a.title, description: a.description, keywords: a.breakdown.keywords, sourceName: a.sourceName }))
+    .filter(a => matchesDesignKeywords({ title: a.title, keywords: a.breakdown.keywords }))
+    .filter(a => {
+      const key = a.title.toLowerCase().trim();
+      if (seenDesignTitles.has(key)) return false;
+      seenDesignTitles.add(key);
+      return true;
+    })
+    .slice(0, MAX_DESIGN_CANDIDATES)
     .map((a, i) => ({ index: i, title: a.title, link: a.link, pubDate: a.pubDate, description: a.description, sourceName: a.sourceName, keywords: a.breakdown.keywords }));
   console.log(`[digest] Design & Generative AI candidates: ${designCandidates.length} keyword-matched articles`);
   const designArticles = await categorizeDesignArticles(designCandidates, aiClient, lang);
