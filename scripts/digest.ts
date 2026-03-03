@@ -252,9 +252,13 @@ function matchesDesignKeywords(article: { title: string; keywords: string[] }): 
   return DESIGN_KEYWORDS_REGEX.test(text);
 }
 
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, '').replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ').trim();
+}
+
 function buildDesignCategorizationPrompt(articles: Array<{ index: number; title: string; description: string; sourceName: string }>, lang: string): string {
   const langLabel = lang === 'zh' ? '中文' : 'English';
-  const items = articles.map(a => `[${a.index}] "${a.title}" — ${a.sourceName}\n    ${a.description.slice(0, 200)}`).join('\n');
+  const items = articles.map(a => `[${a.index}] "${a.title}" — ${a.sourceName}\n    ${stripHtml(a.description).slice(0, 200)}`).join('\n');
   return `You are a tech editor. Classify each article into ONE sub-category and generate a ${langLabel} title + one-liner summary.
 
 Sub-categories:
@@ -300,7 +304,7 @@ async function categorizeDesignArticles(
           sourceName: c.sourceName,
           subCategory: (validSubs.has(r.subCategory) ? r.subCategory : 'generative-image') as DesignSubCategory,
           titleZh: r.titleZh || c.title,
-          oneLiner: r.oneLiner || c.description.slice(0, 100),
+          oneLiner: r.oneLiner || c.title,
         };
       });
   } catch (err) {
@@ -312,7 +316,7 @@ async function categorizeDesignArticles(
       sourceName: c.sourceName,
       subCategory: 'generative-image' as DesignSubCategory,
       titleZh: c.title,
-      oneLiner: c.description.slice(0, 100),
+      oneLiner: c.title,
     }));
   }
 }
