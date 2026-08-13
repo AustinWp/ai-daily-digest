@@ -1,3 +1,5 @@
+
+
 # AI Daily Digest
 
 每天自动从 **104 个技术博客**、**30 个 X/Twitter 账号**、**Hacker News**、**7 个 Reddit 子版块**、**Product Hunt**、**Lobste.rs** 抓取最新内容，融合 **ClawFeed 日报** 和 **GitHub Trending** 热门项目，通过 **Gemini AI** 智能评分、分类和摘要，生成结构化的中文每日技术精选日报，并自动推送到微信。
@@ -52,7 +54,7 @@ GitHub Trending        ──┘                                                
 
 ## 数据源
 
-### RSS Feeds（108 个）
+### RSS Feeds（114 个）
 
 **96 个技术博客** — 来自 [HN Popularity Contest 2025](https://hnblogs.substack.com/) 精选
 
